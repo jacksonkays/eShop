@@ -21,6 +21,39 @@ jobs:
     name: Get Configuration
     uses: ./.github/workflows/environment_config.yml
 
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup dotnet
+        uses: actions/setup-dotnet@v3
+        with:
+          dotnet-version: '8.0.x'
+      - name: Install dependencies
+        run: dotnet restore
+      - name: Build
+        run: dotnet build
+      - name: Publish
+        run: dotnet publish
+
+  upload_artifact:
+      runs-on: ubuntu-latest
+      steps:
+
+        - name: Zip Up Artifact
+          run: cd src/zip -r {SETUP CONTEXT HERE}
+         
+        - name: Azure Login
+          uses: azure/login@v2
+          with:
+            creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+        - name: Upload Artifact to Azure CLI
+          uses: azure/cli@v2
+          with:
+            azcliversion: 2.57.0
+            inlineScript: az storage blob upload --account-name prsourcecodezipdemo --container-name source-code-zips --name {FIX} --file my-code-changes.zip --auth-mode login --overwrite
+
   update_env:
     if: github.event_name == 'pull_request' || (contains(github.event.ref, 'refs/heads') && !github.event.created)
     name: Update ${{ needs.config.outputs.type }} Environment
